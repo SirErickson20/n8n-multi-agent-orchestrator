@@ -1,0 +1,334 @@
+{
+  "name": "worker1_modulo2_miranda_erick",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"ticket_id\": \"a string\",\n  \"customer_name\": \"a string\",\n  \"query\": \"a string\",\n  \"target_worker\": \"a string\"\n}"
+      },
+      "id": "f5ca0733-c935-49a4-aae0-ba2735f3f66f",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -784,
+        -64
+      ],
+      "notesInFlow": true,
+      "alwaysOutputData": false,
+      "notes": "Punto de entrada nativo del sub-workflow. Recibe el payload filtrado (ticket_id, customer_name, query) desde el Manager."
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analiza la siguiente consulta técnica o métrica de negocio del cliente y extrae los datos clave en formato JSON estructurado:\n\nCliente: {{$json.customer_name}}\nTicket ID: {{$json.ticket_id}}\nConsulta: {{$json.query}}\n\n\"Responde ÚNICA y EXCLUSIVAMENTE con un objeto JSON válido según el esquema solicitado. No incluyas texto adicional, saludos, explicaciones, ni bloques de formato Markdown (no uses ```json).",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Eres un analista de datos y métricas técnicas experto. Tu tarea es extraer métricas, validar viabilidad y generar un diagnóstico conciso. Responde siempre con un objeto JSON estructurado que contenga: 'summary', 'metrics_found' (array), 'priority_level' (HIGH/MEDIUM/LOW) y 'diagnostic'. Con este formato:\n\n{\n    \"summary\": \"un resumen de la respuesta\", \n    \"metrics_found\": \"(array)\", \n    \"priority_level\": \"(HIGH/MEDIUM/LOW)\",\n    \"diagnostic\": \"diagnostico\"\n}",
+          "maxIterations": 5
+        }
+      },
+      "id": "75bfe693-dc7a-4ff8-b805-f1ca0c4e768d",
+      "name": "AI Data Specialist",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -544,
+        -64
+      ],
+      "notesInFlow": true,
+      "onError": "continueErrorOutput",
+      "notes": "Agente autónomo quirúrgico que procesa y estructura la información analítica de la petición."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.error }}",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              },
+              "id": "6206fba0-8bff-41b1-8892-864056a0d828"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4138c9d0-ae88-41e1-9243-6713b27fdf51",
+      "name": "Check Execution Error",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -176,
+        -80
+      ],
+      "notesInFlow": true,
+      "notes": "Evalúa si el procesamiento falló para evitar bloqueos síncronos en el flujo padre (Manager)."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "worker_name",
+              "value": "worker1_data_analyst",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "ticket_id",
+              "value": "={{ $('Execute Workflow Trigger').item.json.ticket_id }}",
+              "type": "string"
+            },
+            {
+              "id": "s4",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "s5",
+              "name": "data",
+              "value": "={{ $json.output || $json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "468af978-e114-4930-a962-e3bb957bf619",
+      "name": "Format Success Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        96,
+        -160
+      ],
+      "notesInFlow": true,
+      "notes": "Estandariza el contrato de datos JSON de retorno hacia el Manager con status 'success'."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "e2",
+              "name": "worker_name",
+              "value": "worker1_data_analyst",
+              "type": "string"
+            },
+            {
+              "id": "e3",
+              "name": "ticket_id",
+              "value": "={{ $('Execute Workflow Trigger').item.json.ticket_id || 'UNKNOWN' }}",
+              "type": "string"
+            },
+            {
+              "id": "e4",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "e5",
+              "name": "error_message",
+              "value": "={{ $json.error?.message || 'Error desconocido durante el análisis de datos' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1b62f1c2-f86b-453e-8e4c-5822fcf27daa",
+      "name": "Format Error Contingency",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        96,
+        64
+      ],
+      "notesInFlow": true,
+      "notes": "Devuelve un objeto de contingencia estructurado ante fallos técnicos, garantizando que el Manager no se congele."
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -544,
+        112
+      ],
+      "id": "85d0e8e0-e95b-4b26-961b-ca0ab373f783",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "a42XFGd7V7F7c7ND",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Si necesitos obtener informacion para responder una consulta fijate en la tabla de \"Datos\" en la hoja \"Clientes_Metricas\"",
+        "documentId": {
+          "__rl": true,
+          "value": "1zPvD_cHdcU7tbaLO68vrXmnCnMSIWkOT70ZrFFpmp5I",
+          "mode": "list",
+          "cachedResultName": "Base_Datos_SaaS_Modulo2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zPvD_cHdcU7tbaLO68vrXmnCnMSIWkOT70ZrFFpmp5I/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Clientes_Metricas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zPvD_cHdcU7tbaLO68vrXmnCnMSIWkOT70ZrFFpmp5I/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        -448,
+        112
+      ],
+      "id": "bec41375-6180-4080-9915-57f20e8b8839",
+      "name": "Get row(s) in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "rA8JRHVi8pex7T0a",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"output\": {\n    \"metrics_found\": [\n      \"MRR Mensual (USD): 1200\",\n      \"Cuota API (%): 0.88\"\n    ],\n    \"summary\": \"Solicitud de reporte de ventas\",\n    \"diagnostic\": \"El cliente tiene un puntaje\",\n    \"priority_level\": \"MEDIUM\"\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -336,
+        112
+      ],
+      "id": "54ef897a-c332-4adc-954e-ebca4982594f",
+      "name": "Structured Output Parser"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Data Specialist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Data Specialist": {
+      "main": [
+        [
+          {
+            "node": "Check Execution Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Execution Error": {
+      "main": [
+        [
+          {
+            "node": "Format Error Contingency",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Data Specialist",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Data Specialist",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Data Specialist",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "678768b6-c8de-4bb4-b844-eea8a4abc7ac",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9774988d2efc4d9ee3c1b87aae4c70ac6833a31e8031606306db07d7030a6b7c"
+  },
+  "nodeGroups": [],
+  "id": "hpbUEYRh6qvcyXXl",
+  "tags": []
+}

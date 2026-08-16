@@ -1,0 +1,286 @@
+{
+  "name": "worker2_modulo2_miranda_erick",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"ticket_id\": \"a string\",\n  \"customer_name\": \"a string\",\n  \"query\": \"a string\",\n  \"target_worker\": \"a string\"\n}"
+      },
+      "id": "02c87df2-2f9f-42c2-9177-c9e03c4de888",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -944,
+        -48
+      ],
+      "notesInFlow": true,
+      "notes": "Punto de entrada nativo del sub-workflow de redacción. Recibe el payload filtrado desde el Manager."
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Redacta una respuesta ejecutiva y profesional adaptada al siguiente cliente:\n\nCliente: {{$json.customer_name}}\nTicket ID: {{$json.ticket_id}}\nConsulta: {{$json.query}}\n\n\"Responde ÚNICA y EXCLUSIVAMENTE con un objeto JSON válido según el esquema solicitado. No incluyas texto adicional, saludos, explicaciones, ni bloques de formato Markdown (no uses ```json).",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Eres un especialista senior en redacción y comunicación corporativa B2B. Tu objetivo es generar respuestas de soporte o comerciales con tono empático, ejecutivo y orientado a soluciones. Responde siempre con un JSON estructurado con: 'subject', 'greeting', 'body_paragraphs' (array), 'closing' y 'action_required_by_client' (boolean).\n\n{\n    \"subject\": \"asunto del correo\", \n    \"greeting\": \"saludo para el mensaje\", \n    \"body_paragraphs\": \"(array)\",\n    \"closing\": \"diagnostico\",\n    \"action_required_by_client\": \"boolean\"\n}",
+          "maxIterations": 5
+        }
+      },
+      "id": "9a2f5aaa-a2cc-4732-962d-400318484998",
+      "name": "AI Copy Specialist",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -704,
+        -48
+      ],
+      "notesInFlow": true,
+      "onError": "continueErrorOutput",
+      "notes": "Agente quirúrgico enfocado exclusivamente en la generación del borrador y redacción de comunicación."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.error }}",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c53ba0f7-71da-47cc-8913-92f67715126d",
+      "name": "Check Execution Error",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -320,
+        -48
+      ],
+      "notesInFlow": true,
+      "notes": "Comprueba si ocurrió algún fallo de inferencia o conectividad en el nodo LLM."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "worker_name",
+              "value": "worker2_comm_specialist",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "ticket_id",
+              "value": "={{ $('Execute Workflow Trigger').item.json.ticket_id }}",
+              "type": "string"
+            },
+            {
+              "id": "s4",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "s5",
+              "name": "data",
+              "value": "={{ $json.output || $json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b5021935-058b-412a-a660-0091bfcf9374",
+      "name": "Format Success Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -48,
+        -144
+      ],
+      "notesInFlow": true,
+      "notes": "Estandariza el contrato de datos JSON del borrador de comunicación hacia el Manager."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "e2",
+              "name": "worker_name",
+              "value": "worker2_comm_specialist",
+              "type": "string"
+            },
+            {
+              "id": "e3",
+              "name": "ticket_id",
+              "value": "={{ $('Execute Workflow Trigger').item.json.ticket_id || 'UNKNOWN' }}",
+              "type": "string"
+            },
+            {
+              "id": "e4",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "e5",
+              "name": "error_message",
+              "value": "={{ $json.error?.message || 'Error desconocido durante la redacción de respuesta' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c3e34342-f03f-4c29-a42d-761a64d605ef",
+      "name": "Format Error Contingency",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -80,
+        80
+      ],
+      "notesInFlow": true,
+      "notes": "Garantiza la entrega de un JSON de contingencia si falla la redacción, evitando colapsar al Manager."
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -704,
+        144
+      ],
+      "id": "9e5bf83a-eb24-4b8b-9e29-c19ca1118ba9",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "a42XFGd7V7F7c7ND",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"subject\": \"asunto del correo\",\n  \"greeting\": \"saludo para el mensaje\",\n  \"body_paragraphs\": [\n    \"Primer párrafo del cuerpo del mensaje.\",\n    \"Segundo párrafo del cuerpo del mensaje.\"\n  ],\n  \"closing\": \"texto de despedida\",\n  \"action_required_by_client\": true\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -560,
+        144
+      ],
+      "id": "ef9307ef-03f6-439b-8570-ac38bc4b90fd",
+      "name": "Structured Output Parser"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Copy Specialist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Copy Specialist": {
+      "main": [
+        [
+          {
+            "node": "Check Execution Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Execution Error": {
+      "main": [
+        [
+          {
+            "node": "Format Error Contingency",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Copy Specialist",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Copy Specialist",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7ad26a8b-f5c1-43bf-8f84-f8994f208eca",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9774988d2efc4d9ee3c1b87aae4c70ac6833a31e8031606306db07d7030a6b7c"
+  },
+  "nodeGroups": [],
+  "id": "Wy2BibhUHBG9oHYG",
+  "tags": []
+}

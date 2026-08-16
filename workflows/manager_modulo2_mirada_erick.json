@@ -1,0 +1,721 @@
+{
+  "name": "manager_modulo2_mirada_erick",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "manager-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "940a842c-019e-49ba-bcfc-897f10162e31",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -848,
+        160
+      ],
+      "notesInFlow": true,
+      "webhookId": "08f70127-bbe3-4d08-83e2-17be9e0353e8",
+      "notes": "Punto de entrada de las peticiones del cliente o sistema externo. Recibe el ticket y la consulta original."
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Consulta: {{$json.body.query}}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=Eres un clasificador semántico empresarial de alta precisión. \n\nClasifica la siguiente consulta del cliente dentro de una taxonomía cerrada estricta:\n- DATA_ANALYSIS: Si requiere consultar base de datos, métricas, reportes o auditoría técnica.\n- COMMUNICATION_DRAFT: Si requiere redactar correos, respuestas comerciales o soporte directo al cliente.\n- FALLBACK: Si no encaja con claridad en ninguna de las dos anteriores.\n\nResponde ÚNICAMENTE en formato JSON con la clave 'categoria' cuyo valor sea 'DATA_ANALYSIS', 'COMMUNICATION_DRAFT' o 'FALLBACK'. Entonces debes responder con este formato:\n\n{ \"categoria\" : \"DATA_ANALYSIS, COMMUNICATION_DRAFT o FALLBACK\"} ",
+          "maxIterations": 5
+        }
+      },
+      "id": "a836204b-8e2e-45cc-b3ba-f948b3161bd9",
+      "name": "AI Intent Classifier",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -608,
+        160
+      ],
+      "notesInFlow": true,
+      "notes": "Clasificador semántico que categoriza la intención del usuario bajo una taxonomía cerrada de negocio."
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.categoria }}",
+                    "rightValue": "DATA_ANALYSIS",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "7e422e27-1191-4d53-81f6-9887de6e3d07"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "DATA_ANALYSIS"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.categoria }}",
+                    "rightValue": "COMMUNICATION_DRAFT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "e0ba660a-9fcb-4e20-a73b-6ba4f377003f"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "COMMUNICATION_DRAFT"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "7b92cab4-3103-4eb7-bf81-1ec737035829",
+      "name": "Switch Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -256,
+        144
+      ],
+      "notesInFlow": true,
+      "notes": "Enrutador determinista sin costo de tokens que bifurca el flujo hacia el Worker correspondiente o la vía de escape."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "ticket_id",
+              "value": "={{ $('Webhook Trigger').item.json.body.ticket_id || 'TCK-' + $now.toMillis() }}",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "customer_name",
+              "value": "={{ $('Webhook Trigger').item.json.body.customer_name || 'Cliente General' }}",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "query",
+              "value": "={{ $('Webhook Trigger').item.json.body.query }}",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "target_worker",
+              "value": "worker1_data_analyst",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5e18010f-8cde-43a7-9c01-62a807977a7d",
+      "name": "Sanitize for Worker 1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        0
+      ],
+      "notesInFlow": true,
+      "notes": "Filtra metadatos pesados y construye el Contrato de Datos mínimo para el Worker 1 (Anti Data-Stuffing)."
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "hpbUEYRh6qvcyXXl",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/hpbUEYRh6qvcyXXl",
+          "cachedResultName": "worker1_modulo2_miranda_erick"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ticket_id": "={{ $json.ticket_id }}",
+            "customer_name": "={{ $json.customer_name }}",
+            "query": "={{ $json.query }}",
+            "target_worker": "={{ $json.target_worker }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ticket_id",
+              "displayName": "ticket_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "query",
+              "displayName": "query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "target_worker",
+              "displayName": "target_worker",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "a16ba052-4bf8-463d-8efb-ed3d26d0ef6e",
+      "name": "Execute Worker 1 (Data Analyst)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        0
+      ],
+      "notesInFlow": true,
+      "notes": "Delega la tarea técnica al sub-workflow Worker 1 y pausa la ejecución síncrona hasta obtener respuesta."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "ticket_id",
+              "value": "={{ $('Webhook Trigger').item.json.body.ticket_id || 'TCK-' + $now.toMillis() }}",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "customer_name",
+              "value": "={{ $('Webhook Trigger').item.json.body.customer_name || 'Cliente General' }}",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "query",
+              "value": "={{ $('Webhook Trigger').item.json.body.query }}",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "target_worker",
+              "value": "worker2_comm_specialist",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "884dcab0-fbbb-44b7-8a4e-0a5bf2afc312",
+      "name": "Sanitize for Worker 2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        160
+      ],
+      "notesInFlow": true,
+      "notes": "Filtra el payload y prepara el Contrato de Datos limpio para el especialista de redacción Worker 2."
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Wy2BibhUHBG9oHYG",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Wy2BibhUHBG9oHYG",
+          "cachedResultName": "worker2_modulo2_miranda_erick"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "4590a6ae-9271-4811-9005-bb42604547fd",
+      "name": "Execute Worker 2 (Communication)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        160
+      ],
+      "notesInFlow": true,
+      "notes": "Delega la tarea de redacción al sub-workflow Worker 2 con sincronización activa (Wait for child to finish)."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "status",
+              "value": "escalated_to_human",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "worker_invoked",
+              "value": "HUMAN_SUPERVISOR",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "data",
+              "value": "={{ { reason: 'Intención fuera de taxonomía estándar o solicitud de baja confianza', raw_query: $('Webhook Trigger').item.json.body.query } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6b93a626-ca76-4a0b-8ddc-d1c8751c5097",
+      "name": "Fallback / Human Escalation",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        320
+      ],
+      "notesInFlow": true,
+      "notes": "Vía de escape segura para solicitudes no clasificadas, evitando fallos silenciosos y derivando a un supervisor."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "l1",
+              "name": "audit_id",
+              "value": "={{ $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "l2",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "l3",
+              "name": "ticket_id",
+              "value": "={{ $('Webhook Trigger').item.json.body.ticket_id || 'N/A' }}",
+              "type": "string"
+            },
+            {
+              "id": "l4",
+              "name": "worker_invoked",
+              "value": "={{ $json.worker_name || $json.worker_invoked || 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "l5",
+              "name": "status",
+              "value": "={{ $json.status || 'success' }}",
+              "type": "string"
+            },
+            {
+              "id": "l6",
+              "name": "response_payload",
+              "value": "={{ $json.data || $json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a2b91f1f-ec9d-4a1b-9df3-109ca533443d",
+      "name": "Consolidate Audit Log",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        528,
+        160
+      ],
+      "notesInFlow": true,
+      "notes": "Consolida la observabilidad del sistema registrando el ID de ejecución, el Worker invocado y el resultado devuelto."
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -608,
+        368
+      ],
+      "id": "bc016a8a-b3de-4694-8b9b-111875162b99",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "a42XFGd7V7F7c7ND",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{ \"categoria\" : \"DATA_ANALYSIS, COMMUNICATION_DRAFT o FALLBACK\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -464,
+        368
+      ],
+      "id": "095a40e6-cbc7-46ee-8bda-bdc57b80e1ed",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1zPvD_cHdcU7tbaLO68vrXmnCnMSIWkOT70ZrFFpmp5I",
+          "mode": "list",
+          "cachedResultName": "Base_Datos_SaaS_Modulo2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zPvD_cHdcU7tbaLO68vrXmnCnMSIWkOT70ZrFFpmp5I/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1301474549,
+          "mode": "list",
+          "cachedResultName": "Manager_Audit_Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zPvD_cHdcU7tbaLO68vrXmnCnMSIWkOT70ZrFFpmp5I/edit#gid=1301474549"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID de Auditoría": "={{ $json.audit_id }}",
+            "Marca de Tiempo": "={{ $json.timestamp }}",
+            "ID de Ticket": "={{ $json.ticket_id }}",
+            "Proceso Invocado": "={{ $json.worker_invoked }}",
+            "Estado": "={{ $json.status }}",
+            "Datos de Respuesta": "={{ $json.response_payload }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID de Auditoría",
+              "displayName": "ID de Auditoría",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Marca de Tiempo",
+              "displayName": "Marca de Tiempo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ID de Ticket",
+              "displayName": "ID de Ticket",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Proceso Invocado",
+              "displayName": "Proceso Invocado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Datos de Respuesta",
+              "displayName": "Datos de Respuesta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        736,
+        160
+      ],
+      "id": "0faeeb87-f150-49a4-a793-3b611855e871",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "rA8JRHVi8pex7T0a",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a2b48f6c-a4c2-4349-bbab-918cc440117c",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        928,
+        160
+      ],
+      "notesInFlow": true,
+      "notes": "Retorna el contrato de salida consolidado al cliente o servicio consumidor."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Intent Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Intent Classifier": {
+      "main": [
+        [
+          {
+            "node": "Switch Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Router": {
+      "main": [
+        [
+          {
+            "node": "Sanitize for Worker 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sanitize for Worker 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallback / Human Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize for Worker 1": {
+      "main": [
+        [
+          {
+            "node": "Execute Worker 1 (Data Analyst)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize for Worker 2": {
+      "main": [
+        [
+          {
+            "node": "Execute Worker 2 (Communication)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Worker 1 (Data Analyst)": {
+      "main": [
+        [
+          {
+            "node": "Consolidate Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Worker 2 (Communication)": {
+      "main": [
+        [
+          {
+            "node": "Consolidate Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback / Human Escalation": {
+      "main": [
+        [
+          {
+            "node": "Consolidate Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidate Audit Log": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Intent Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Intent Classifier",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "d306d8aa-d0bc-444c-b868-44a4a8c6fa3f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9774988d2efc4d9ee3c1b87aae4c70ac6833a31e8031606306db07d7030a6b7c"
+  },
+  "nodeGroups": [],
+  "id": "uooWychhaMwOUMRR",
+  "tags": []
+}
